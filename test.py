@@ -16,7 +16,12 @@ from kernel_methods import KRR, KLR
 X_train = pd.concat((pd.read_csv("Data/Xtr0.csv"),pd.read_csv("Data/Xtr1.csv"),pd.read_csv("Data/Xtr2.csv")))['seq'].values
 Y_train = pd.concat((pd.read_csv("Data/Ytr0.csv"),pd.read_csv("Data/Ytr1.csv"),pd.read_csv("Data/Ytr2.csv")))['Bound'].values
 
+X_train=X_train[:1000]
+Y_train=Y_train[:1000]
+
 #%% Kernel Ridge Regression
 
-krr = KRR(C=1,kernel=spectrum_kernel)
+krr = KRR(C=1,kernel=spectrum_kernel(k=5))
 krr.fit(X_train,Y_train)
+
+y_pred = krr.predict(X_train)

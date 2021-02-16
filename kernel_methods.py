@@ -15,7 +15,7 @@ from preprocess import spectrum_kernel
 #%% kernel ridge regression
 
 class KRR:
-    def __init__(self,C=1,kernel=spectrum_kernel):
+    def __init__(self,C=1,kernel=spectrum_kernel(k=10)):
         """
         Parameters
         ----------
@@ -27,7 +27,7 @@ class KRR:
 
         """
         self.C=1
-        self.aplha=0
+        self.w=0
         self.kernel=kernel
         
     #@jit(nopython=True)
@@ -48,16 +48,19 @@ class KRR:
 
         """
         n = X.shape[0]
-        K = np.zeros((X.shape[0],X.shape[0]),dtype=np.int)
-        for i in range(n):
-            K[i,i] = self.kernel(X[i],X[i])
-            for j in range(i+1,n):
-                K[i,j] = self.kernel(X[i],X[j])
-                K[j,i] = self.kernel(X[i],X[j])
-        self.alpha = np.linalg.inv(K+self.C*np.eye(Y.shape[0])).dot(Y)
+        
+        phi = self.kernel.phi(X)
+        
+        d = len(phi)
+        #K = phi.dot(phi.T)
+        
+        if n<=d: # to do 
+            self.w = phi.T.dot(np.linalg.inv(phi.dot(phi.T)+self.C*np.eye(Y.shape[0]))).dot(Y)
+        else:
+            self.w = np.linalg.inv(phi.T.dot(phi)+self.C*np.eye(phi.shape[0])).dot(phi.T).dot(Y)
         return
     
-    def predict(self,x,X):
+    def predict(self,x):
         """
         predict value from input and training set
 
@@ -65,8 +68,6 @@ class KRR:
         ----------
         x : string
             input.
-        X : array of strings
-            training set.
 
         Returns
         -------
@@ -74,16 +75,14 @@ class KRR:
             prediction.
 
         """
-        n = self.alpha.shape[0]
-        out = 0
-        for i in range(n):
-            out += self.alpha[i]*self.kernel(X[i], x)
+        phi = self.kernel.phi(x)
+        out = self.w.dot(phi.T)
         return out
     
 #%% kernel logistic regression
 
 class KLR:
-    def __init__(self,C=1,kernel=spectrum_kernel):
+    def __init__(self,C=1,kernel=spectrum_kernel(k=10)):
         """
         Parameters
         ----------
