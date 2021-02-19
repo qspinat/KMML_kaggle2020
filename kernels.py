@@ -17,7 +17,7 @@ from numba import jit
 #@jit(nopython=True)
 
 class spectrum_kernel:
-    def __init__(self,k=10):
+    def __init__(self,k=5):
         self.k=k
 
     def phi(self,X):

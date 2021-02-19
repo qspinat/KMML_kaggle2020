@@ -10,12 +10,12 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as scopt
 from numba import jit
-from preprocess import spectrum_kernel
-
+from kernels import spectrum_kernel
+from tqdm import tqdm
 #%% kernel ridge regression
 
 class KRR:
-    def __init__(self,C=1,kernel=spectrum_kernel(k=10)):
+    def __init__(self,C=1,kernel=spectrum_kernel(k=5)):
         """
         Parameters
         ----------
@@ -26,7 +26,7 @@ class KRR:
         None.
 
         """
-        self.C=1
+        self.C=C
         self.w=0
         self.kernel=kernel
         
@@ -82,7 +82,7 @@ class KRR:
 #%% kernel logistic regression
 
 class KLR:
-    def __init__(self,C=1,kernel=spectrum_kernel(k=10)):
+    def __init__(self,C=1,kernel=spectrum_kernel(k=5)):
         """
         Parameters
         ----------
@@ -93,12 +93,12 @@ class KLR:
         None.
 
         """
-        self.C=1
+        self.C=C
+        self.w=0
         self.kernel=kernel
-        self.alpha=0
         
     #@jit(nopython=True)
-    def fit(self,X,Y,it=100):    
+    def fit(self,X,Y,it=10):    
         """
         fits the KRR
         
@@ -117,25 +117,36 @@ class KLR:
 
         """
         n = X.shape[0]
-        self.alpha = np.zeros(n)
+        alpha = np.zeros(n) #np.random.randn(n)
+                
+        phi = self.kernel.phi(X)
         
-        K = np.zeros((X.shape[0],X.shape[0]),dtype=np.int)
-        for i in range(n):
-            K[i,i] = self.kernel(X[i],X[i])
-            for j in range(i+1,n):
-                K[i,j] = self.kernel(X[i],X[j])
-                K[j,i] = self.kernel(X[i],X[j])
+        d = len(phi)
+        K = phi.dot(phi.T)
         
-        for i in range(it):
-            m = K.dot(self.alpha)
-            P = -1/(1+np.exp(Y.dot(m)))
-            W = 1/(1+np.exp(m))/(1+np.exp(-m))
-            z = m - P.dot(Y)/W
+        for i in tqdm(range(it)):
+            #print(i)
+            m = K.dot(alpha)
+            print("m :",m.min(),m.max())
+            #print("m:",m.shape)
+            P = -1/(1+np.exp(Y*m))
+            print("P :",P.min(),P.max())
+            #print("P :",P.shape)
+            W = 1/(1+np.exp(Y*m))/(1+np.exp(-Y*m))
+            print("W :",W.min(),W.max())
+            #print("W :",W.shape)
+            z = m + Y*(1+np.exp(-Y*m))
+            print("z :",z.min(),z.max())
+            #print("z :",z.shape)
             
-            self.alpha = np.diag(np.sqrt(W))*np.linalg.inv(np.diag(np.diag(np.sqrt(W))).dot(K.dot(np.diag(np.sqrt(W))))+self.C*np.eye(z.shape[0])).dot(np.diag(np.sqrt(W)).dot(z))
+            alpha = np.diag(np.sqrt(W)).dot( np.linalg.inv( np.diag(np.sqrt(W)).dot(K.dot(np.diag(np.sqrt(W))))+self.C*np.eye(z.shape[0]) ).dot( np.diag(np.sqrt(W)).dot(z) ) )
+            #print("alpha :",alpha.shape)
+            
+        self.w = alpha.dot(phi)
+        #print("w :",self.w.shape)
         return
     
-    def predict(self,x,X):
+    def predict(self,x):
         """
         predict value from input and training set
 
@@ -143,8 +154,6 @@ class KLR:
         ----------
         x : string
             input.
-        X : array of strings
-            training set.
 
         Returns
         -------
@@ -152,9 +161,7 @@ class KLR:
             prediction.
 
         """
-        n = self.alpha.shape[0]
-        out = 0
-        for i in range(n):
-            out += self.alpha[i]*self.kernel(X[i], x)
+        phi = self.kernel.phi(x)
+        out = self.w.dot(phi.T)
         return out
     

@@ -127,6 +127,7 @@ dmypy.json
 
 # DATA
 Data/*
+Eval/*
 
 # Pyre type checker
 .pyre/
