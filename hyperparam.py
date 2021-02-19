@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score, Gri
 from sklearn.metrics import f1_score, accuracy_score
 
 from kernels import spectrum_kernel
-from kernel_methods import KRR, KLR
+from kernel_methods import KRR, KLR, SVM, cross_val_SVM
 
 #%% load data
 
@@ -25,7 +25,7 @@ y = pd.concat((pd.read_csv("Data/Ytr0.csv"),pd.read_csv("Data/Ytr1.csv"),pd.read
 
 #%%
 
-liste_C = [1,10,100,1000]
+liste_C = [0.01,0.1,1,10,100]
 scores = [f1_score, accuracy_score]
 
 n_splits=3
@@ -40,7 +40,7 @@ for score in scores:
     for C in liste_C:
         val_score = 0
         for train_index, test_index in skf.split(X, y):  
-            clf = KRR(C=C,kernel=spectrum_kernel(k=6))
+            clf = cross_val_SVM(C=C,kernel=spectrum_kernel(k=6),n_splits=4)
             clf.fit(X[train_index], y[train_index])
             
             y_pred = clf.predict(X[test_index])

@@ -12,6 +12,11 @@ import scipy.optimize as scopt
 from numba import jit
 from kernels import spectrum_kernel
 from tqdm import tqdm
+from sklearn.model_selection import StratifiedKFold
+
+from qpsolvers import solve_qp
+from cvxopt import matrix, solvers
+
 #%% kernel ridge regression
 
 class KRR:
@@ -165,3 +170,148 @@ class KLR:
         out = self.w.dot(phi.T)
         return out
     
+    
+#%% SVM
+
+class SVM:
+    def __init__(self,C=1,kernel=spectrum_kernel(k=5)):
+        """
+        Parameters
+        ----------
+        C : float, optional
+            regularization constant. The default is 1.
+        Returns
+        -------
+        None.
+
+        """
+        self.C=C
+        self.w=0
+        self.kernel=kernel
+        
+    def fit(self,X,Y):    
+        """
+        fits the KRR
+        
+        Parameters
+        ----------
+        X : 1-D array of strings
+            ATCG inputs
+        Y : 1-D array
+            labels.
+        it : int
+            number of iterations
+
+        Returns
+        -------
+        None.
+
+        """
+        n = X.shape[0]
+        alpha = np.zeros(n) #np.random.randn(n)
+                
+        phi = self.kernel.phi(X)
+        
+        K = phi.dot(phi.T)
+        
+        #alpha = solve_qp(P=2*K.astype(np.double), q=-2*Y.astype(np.double), lb=np.zeros(n,dtype=np.double), G=np.diag(Y).astype(np.double), h=self.C*np.ones(n,dtype=np.double))
+        
+        P = matrix(2*K.astype(np.float))
+        q = matrix(-2*Y.astype(np.float))
+        G = matrix(np.concatenate((np.diag(Y),-np.diag(Y))).astype(np.float))
+        h = matrix(np.concatenate((self.C*np.ones(n),np.zeros(n))))       
+        
+        alpha = np.squeeze(solvers.qp(P=P, q=q, G=G, h=h, show_progress=False)['x'])
+        
+        self.w = alpha.dot(phi)
+        
+        return
+    
+    def predict(self,x):
+        """
+        predict value from input and training set
+
+        Parameters
+        ----------
+        x : string
+            input.
+
+        Returns
+        -------
+        out : float
+            prediction.
+
+        """
+        phi = self.kernel.phi(x)
+        out = self.w.dot(phi.T)
+        return out
+    
+#%%
+    
+class cross_val_SVM:
+    def __init__(self,C=1,kernel=spectrum_kernel(k=5),n_splits=3,random_state=42):
+        """
+        Parameters
+        ----------
+        C : float, optional
+            regularization constant. The default is 1.
+        n_splits : int, optional
+            number of cross validation folds. The default is 3.
+        Returns
+        -------
+        None.
+
+        """
+        self.C=C
+        self.w=0
+        self.kernel=kernel
+        self.n_splits=n_splits
+        self.random_state=random_state
+        
+    def fit(self,X,Y):    
+        """
+        fits the KRR
+        
+        Parameters
+        ----------
+        X : 1-D array of strings
+            ATCG inputs
+        Y : 1-D array
+            labels.
+        it : int
+            number of iterations
+
+        Returns
+        -------
+        None.
+
+        """
+        skf = StratifiedKFold(n_splits=self.n_splits, random_state=0, shuffle=True)
+        
+        clf = SVM(kernel=self.kernel,C=self.C)
+        
+        for train_index, test_index in skf.split(X, Y):  
+            clf.fit(X[train_index], Y[train_index])
+            self.w+=clf.w
+        self.w/=self.n_splits
+        
+        return
+    
+    def predict(self,x):
+        """
+        predict value from input and training set
+
+        Parameters
+        ----------
+        x : string
+            input.
+
+        Returns
+        -------
+        out : float
+            prediction.
+
+        """
+        phi = self.kernel.phi(x)
+        out = self.w.dot(phi.T)
+        return out
