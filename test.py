@@ -9,7 +9,7 @@ Created on Mon Feb 15 17:58:00 2021
 import numpy as np
 import pandas as pd
 from kernels import spectrum_kernel
-from kernel_methods import KRR, KLR, SVM, cross_val_SVM
+from kernel_methods import KRR, KLR, SVM, cross_SVM, cross_KRR
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
@@ -18,6 +18,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 
 X = pd.concat((pd.read_csv("Data/Xtr0.csv"),pd.read_csv("Data/Xtr1.csv"),pd.read_csv("Data/Xtr2.csv")))['seq'].values
 Y = pd.concat((pd.read_csv("Data/Ytr0.csv"),pd.read_csv("Data/Ytr1.csv"),pd.read_csv("Data/Ytr2.csv")))['Bound'].values
+Y = 2*Y-1
 
 X_train, X_test, Y_train, Y_test = train_test_split( X, Y, test_size=1/6, random_state=42, stratify=Y)
 
@@ -26,14 +27,14 @@ X_train, X_test, Y_train, Y_test = train_test_split( X, Y, test_size=1/6, random
 
 #%% Kernel Ridge Regression
 
-krr = KRR(C=10,kernel=spectrum_kernel(k=5))
+krr = KRR(C=500,kernel=spectrum_kernel(k=9))
 krr.fit(X_train,Y_train)
 
 
 #%% predict training set KRR
 
 y_pred = krr.predict(X_train)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On training set:")
 print("f1 :",f1_score(Y_train,y_pred))
@@ -41,7 +42,7 @@ print("accuracy :", accuracy_score(Y_train,y_pred))
 print()
 
 y_pred = krr.predict(X_test)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On test set:")
 print("f1 :",f1_score(Y_test,y_pred))
@@ -49,48 +50,75 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% SVM
 
-svm = SVM(C=0.005,kernel=spectrum_kernel(k=6))
+svm = SVM(C=0.01,kernel=spectrum_kernel(k=8))
 svm.fit(X_train,Y_train)
 
 
 #%% predict training set SVM
 
 y_pred = svm.predict(X_train)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On training set:")
 print("f1 :",f1_score(Y_train,y_pred))
 print("accuracy :", accuracy_score(Y_train,y_pred))
 
 y_pred = svm.predict(X_test)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On test set:")
 print("f1 :",f1_score(Y_test,y_pred))
 print("accuracy :", accuracy_score(Y_test,y_pred))
 
 
+#%% cross_validated KRR
+
+cross_krr = cross_KRR(C=1000,kernel=spectrum_kernel(k=7),n_splits=5)
+cross_krr.fit(X_train,Y_train)
+
+
+#%% predict training set cross KRR
+
+y_pred = cross_krr.predict(X_train)
+y_pred = np.sign(y_pred)
+
+print("On training set:")
+print("f1 :",f1_score(Y_train,y_pred))
+print("accuracy :", accuracy_score(Y_train,y_pred))
+
+y_pred = cross_krr.predict(X_test)
+y_pred = np.sign(y_pred)
+
+print("On test set:")
+print("f1 :",f1_score(Y_test,y_pred))
+print("accuracy :", accuracy_score(Y_test,y_pred))
+
 #%% cross_validated SVM
 
-cross_svm = cross_val_SVM(C=0.01,kernel=spectrum_kernel(k=6),n_splits=4)
+cross_svm = cross_SVM(C=0.005,kernel=spectrum_kernel(k=6),n_splits=5)
 cross_svm.fit(X_train,Y_train)
 
 
 #%% predict training set SVM
 
 y_pred = cross_svm.predict(X_train)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On training set:")
 print("f1 :",f1_score(Y_train,y_pred))
 print("accuracy :", accuracy_score(Y_train,y_pred))
 
 y_pred = cross_svm.predict(X_test)
-y_pred = (y_pred > 0.5)*1
+y_pred = np.sign(y_pred)
 
 print("On test set:")
 print("f1 :",f1_score(Y_test,y_pred))
 print("accuracy :", accuracy_score(Y_test,y_pred))
+
+#%% train on the whole dataset
+
+cross_svm = cross_SVM(C=0.01,kernel=spectrum_kernel(k=6),n_splits=5)
+cross_svm.fit(X,Y)
 
 #%% test data
 
@@ -99,8 +127,9 @@ X_val = pd.concat((pd.read_csv("Data/Xte0.csv"),pd.read_csv("Data/Xte1.csv"),pd.
 
 #%% predict test set
 
-y_pred = svm.predict(X_val)
-y_pred = (y_pred > 0.5)*1
+y_pred = cross_svm.predict(X_val)
+y_pred = (np.sign(y_pred))
+y_pred=((y_pred+1)//2).astype(np.int)
 
 
 #%% save

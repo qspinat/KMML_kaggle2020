@@ -13,9 +13,11 @@ from numba import jit
 from kernels import spectrum_kernel
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold
+import scipy.linalg
+import scipy.sparse as sparse
 
 from qpsolvers import solve_qp
-from cvxopt import matrix, solvers
+from cvxopt import matrix, spmatrix, solvers
 
 #%% kernel ridge regression
 
@@ -32,6 +34,7 @@ class KRR:
 
         """
         self.C=C
+        self.alpha=0
         self.w=0
         self.kernel=kernel
         
@@ -56,13 +59,16 @@ class KRR:
         
         phi = self.kernel.phi(X)
         
-        d = len(phi)
+        d = phi.shape[1]
+        print(n,d)
         #K = phi.dot(phi.T)
         
         if n<=d: # to do 
-            self.w = phi.T.dot(np.linalg.inv(phi.dot(phi.T)+self.C*np.eye(Y.shape[0]))).dot(Y)
+            #self.w = phi.T.dot(sparse.linalg.inv(phi.dot(phi.T)+self.C*sparse.eye(Y.shape[0]))).dot(Y)
+            self.w = np.array(phi.T.dot(np.linalg.inv(phi.dot(phi.T)+self.C*np.eye(Y.shape[0])).dot(Y).T)).squeeze()
         else:
-            self.w = np.linalg.inv(phi.T.dot(phi)+self.C*np.eye(phi.shape[0])).dot(phi.T).dot(Y)
+            #self.w = sparse.linalg.inv(phi.T.dot(phi)+self.C*sparse.eye(phi.shape[0],dtype=np.int32)).dot(phi.T).dot(Y)
+            self.w = np.array(np.linalg.inv(phi.T.dot(phi)+self.C*np.eye(phi.shape[0],dtype=np.int32)).dot(phi.T).dot(Y)).squeeze()
         return
     
     def predict(self,x):
@@ -81,10 +87,10 @@ class KRR:
 
         """
         phi = self.kernel.phi(x)
-        out = self.w.dot(phi.T)
+        out = np.array(phi.dot(self.w.T).T)
         return out
     
-#%% kernel logistic regression
+#%% kernel logistic regression ## DOES NOT WORK
 
 class KLR:
     def __init__(self,C=1,kernel=spectrum_kernel(k=5)):
@@ -126,7 +132,7 @@ class KLR:
                 
         phi = self.kernel.phi(X)
         
-        d = len(phi)
+        d = phi.shape[1]
         K = phi.dot(phi.T)
         
         for i in tqdm(range(it)):
@@ -212,7 +218,7 @@ class SVM:
                 
         phi = self.kernel.phi(X)
         
-        K = phi.dot(phi.T)
+        K = phi.dot(phi.T).toarray()
         
         #alpha = solve_qp(P=2*K.astype(np.double), q=-2*Y.astype(np.double), lb=np.zeros(n,dtype=np.double), G=np.diag(Y).astype(np.double), h=self.C*np.ones(n,dtype=np.double))
         
@@ -221,9 +227,11 @@ class SVM:
         G = matrix(np.concatenate((np.diag(Y),-np.diag(Y))).astype(np.float))
         h = matrix(np.concatenate((self.C*np.ones(n),np.zeros(n))))       
         
-        alpha = np.squeeze(solvers.qp(P=P, q=q, G=G, h=h, show_progress=False)['x'])
+        print("solving QP problem")
         
-        self.w = alpha.dot(phi)
+        alpha = sparse.csr_matrix(solvers.qp(P=P, q=q, G=G, h=h, show_progress=True)['x'].T)
+                
+        self.w = alpha.dot(phi).toarray()
         
         return
     
@@ -243,12 +251,12 @@ class SVM:
 
         """
         phi = self.kernel.phi(x)
-        out = self.w.dot(phi.T)
+        out = np.array(phi.dot(self.w.T).T)
         return out
     
-#%%
+#%% cross validation
     
-class cross_val_SVM:
+class cross_SVM:
     def __init__(self,C=1,kernel=spectrum_kernel(k=5),n_splits=3,random_state=42):
         """
         Parameters
@@ -289,6 +297,75 @@ class cross_val_SVM:
         skf = StratifiedKFold(n_splits=self.n_splits, random_state=0, shuffle=True)
         
         clf = SVM(kernel=self.kernel,C=self.C)
+        
+        for train_index, test_index in skf.split(X, Y):  
+            clf.fit(X[train_index], Y[train_index])
+            self.w+=clf.w
+        self.w/=self.n_splits
+        
+        return
+    
+    def predict(self,x):
+        """
+        predict value from input and training set
+
+        Parameters
+        ----------
+        x : string
+            input.
+
+        Returns
+        -------
+        out : float
+            prediction.
+
+        """
+        phi = self.kernel.phi(x)
+        out = self.w.dot(phi.T)
+        return out
+    
+
+class cross_KRR:
+    def __init__(self,C=1,kernel=spectrum_kernel(k=5),n_splits=3,random_state=42):
+        """
+        Parameters
+        ----------
+        C : float, optional
+            regularization constant. The default is 1.
+        n_splits : int, optional
+            number of cross validation folds. The default is 3.
+        Returns
+        -------
+        None.
+
+        """
+        self.C=C
+        self.w=0
+        self.kernel=kernel
+        self.n_splits=n_splits
+        self.random_state=random_state
+        
+    def fit(self,X,Y):    
+        """
+        fits the KRR
+        
+        Parameters
+        ----------
+        X : 1-D array of strings
+            ATCG inputs
+        Y : 1-D array
+            labels.
+        it : int
+            number of iterations
+
+        Returns
+        -------
+        None.
+
+        """
+        skf = StratifiedKFold(n_splits=self.n_splits, random_state=0, shuffle=True)
+        
+        clf = KRR(kernel=self.kernel,C=self.C)
         
         for train_index, test_index in skf.split(X, Y):  
             clf.fit(X[train_index], Y[train_index])
