@@ -231,7 +231,7 @@ class SVM:
         
         alpha = sparse.csr_matrix(solvers.qp(P=P, q=q, G=G, h=h, show_progress=True)['x'].T)
                 
-        self.w = alpha.dot(phi).toarray()
+        self.w = alpha.dot(phi).toarray().squeeze()
         
         return
     
