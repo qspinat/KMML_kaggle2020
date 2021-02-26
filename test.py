@@ -9,7 +9,7 @@ Created on Mon Feb 15 17:58:00 2021
 import numpy as np
 import pandas as pd
 from kernels import spectrum_kernel
-from kernel_methods import KRR, KLR, SVM, cross_SVM, cross_KRR
+from kernel_methods import KRR, KLR, SVM, cross_clf
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
@@ -27,7 +27,7 @@ X_train, X_test, Y_train, Y_test = train_test_split( X, Y, test_size=1/6, random
 
 #%% Kernel Ridge Regression
 
-krr = KRR(C=500,kernel=spectrum_kernel(k=9))
+krr = KRR(C=1000,kernel=spectrum_kernel(k=11))
 krr.fit(X_train,Y_train)
 
 
@@ -50,7 +50,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% SVM
 
-svm = SVM(C=0.01,kernel=spectrum_kernel(k=8))
+svm = SVM(C=0.001,kernel=spectrum_kernel(k=10))
 svm.fit(X_train,Y_train)
 
 
@@ -73,7 +73,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% cross_validated KRR
 
-cross_krr = cross_KRR(C=1000,kernel=spectrum_kernel(k=7),n_splits=5)
+cross_krr = cross_clf(C=1000,kernel=spectrum_kernel(k=10),clf=KRR,n_splits=5)
 cross_krr.fit(X_train,Y_train)
 
 
@@ -95,7 +95,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% cross_validated SVM
 
-cross_svm = cross_SVM(C=0.005,kernel=spectrum_kernel(k=6),n_splits=5)
+cross_svm = cross_clf(C=0.005,kernel=spectrum_kernel(k=10),clf=SVM,n_splits=5)
 cross_svm.fit(X_train,Y_train)
 
 
@@ -117,7 +117,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% train on the whole dataset
 
-cross_svm = cross_SVM(C=0.01,kernel=spectrum_kernel(k=6),n_splits=5)
+cross_svm = cross_clf(C=0.01,kernel=spectrum_kernel(k=10),clf=SVM,n_splits=5)
 cross_svm.fit(X,Y)
 
 #%% test data
