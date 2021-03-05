@@ -8,7 +8,7 @@ Created on Mon Feb 15 17:58:00 2021
 
 import numpy as np
 import pandas as pd
-from kernels import spectrum_kernel
+from kernels import spectrum_kernel, mismatch_kernel
 from kernel_methods import KRR, KLR, SVM, cross_clf
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
@@ -27,9 +27,13 @@ X_train, X_test, Y_train, Y_test = train_test_split( X, Y, test_size=1/6, random
 
 #%% Kernel Ridge Regression
 
-krr = KRR(C=1000,kernel=spectrum_kernel(k=11))
+krr = KRR(C=150,kernel=spectrum_kernel(k=9))
 krr.fit(X_train,Y_train)
 
+#%%
+
+krr = KRR(C=150,kernel=mismatch_kernel(k=9,m=0))
+krr.fit(X_train,Y_train)
 
 #%% predict training set KRR
 
@@ -42,7 +46,7 @@ print("accuracy :", accuracy_score(Y_train,y_pred))
 print()
 
 y_pred = krr.predict(X_test)
-y_pred = np.sign(y_pred)
+y_pred = (y_pred>0)*2-1
 
 print("On test set:")
 print("f1 :",f1_score(Y_test,y_pred))
@@ -50,7 +54,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% SVM
 
-svm = SVM(C=0.001,kernel=spectrum_kernel(k=10))
+svm = SVM(C=0.008,kernel=spectrum_kernel(k=10))
 svm.fit(X_train,Y_train)
 
 
@@ -64,7 +68,7 @@ print("f1 :",f1_score(Y_train,y_pred))
 print("accuracy :", accuracy_score(Y_train,y_pred))
 
 y_pred = svm.predict(X_test)
-y_pred = np.sign(y_pred)
+y_pred = (y_pred>0)*2-1
 
 print("On test set:")
 print("f1 :",f1_score(Y_test,y_pred))
@@ -95,7 +99,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% cross_validated SVM
 
-cross_svm = cross_clf(C=0.005,kernel=spectrum_kernel(k=10),clf=SVM,n_splits=5)
+cross_svm = cross_clf(C=0.008,kernel=spectrum_kernel(k=9),clf=SVM,n_splits=5)
 cross_svm.fit(X_train,Y_train)
 
 
@@ -117,8 +121,8 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% train on the whole dataset
 
-cross_svm = cross_clf(C=0.01,kernel=spectrum_kernel(k=10),clf=SVM,n_splits=5)
-cross_svm.fit(X,Y)
+clf = cross_clf(C=0.008,kernel=spectrum_kernel(k=10),n_splits=5,clf=SVM)
+clf.fit(X,Y)
 
 #%% test data
 
@@ -127,8 +131,8 @@ X_val = pd.concat((pd.read_csv("Data/Xte0.csv"),pd.read_csv("Data/Xte1.csv"),pd.
 
 #%% predict test set
 
-y_pred = cross_svm.predict(X_val)
-y_pred = (np.sign(y_pred))
+y_pred = clf.predict(X_val)
+y_pred = (y_pred>0)*2-1
 y_pred=((y_pred+1)//2).astype(np.int)
 
 

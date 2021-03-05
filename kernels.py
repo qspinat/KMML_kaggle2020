@@ -14,6 +14,7 @@ from numba import jit
 from itertools import product, combinations
 from scipy.special import comb
 import scipy.sparse as sparse
+from tqdm import tqdm
 
 #%% spectrum kernel
 
@@ -97,7 +98,7 @@ class spectrum_kernel:
             #out = np.zeros((len(X),4**self.k)).astype(np.int32)
             #out = sparse.csr_matrix((len(X),4**self.k),dtype=np.int32)
             out = sparse.lil_matrix((len(X),4**self.k),dtype=np.int32)
-            for l in range(len(X)):
+            for l in tqdm(range(len(X))):
                 for i in range(len(X[0])-self.k+1):
                     u = X[l][i:i+self.k]
                     ind = values[u[0]]
@@ -171,8 +172,7 @@ class mismatch_kernel:
                     
         else:
             out = sparse.lil_matrix((len(X), 4**self.k), dtype=np.int32)
-            for l in range(len(X)):
-                print(l)
+            for l in tqdm(range(len(X))):
                 XX = list(map(lambda x: self.values[x], list(X[l]))) + [0] * (self.k-len(X[l])%self.k)
                 for i in range(len(X[l])-self.k+1):
                     u = XX[i:i+self.k]

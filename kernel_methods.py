@@ -62,7 +62,7 @@ class KRR:
         self.phi_train = phi
         
         d = phi.shape[1]
-        print(n,d)
+        #print(n,d)
         #K = phi.dot(phi.T)
         
         if n<=d: # to do 
@@ -238,7 +238,7 @@ class SVM:
         G = matrix(np.concatenate((np.diag(Y),-np.diag(Y))).astype(np.float))
         h = matrix(np.concatenate((self.C*np.ones(n),np.zeros(n))))       
         
-        print("solving QP problem")
+        #print("solving QP problem")
         
         self.alpha = sparse.csr_matrix(solvers.qp(P=P, q=q, G=G, h=h, show_progress=True)['x'])
         self.alpha = self.alpha.multiply(np.abs(self.alpha)>(self.C*10e-6))
@@ -307,8 +307,10 @@ class cross_clf:
         """
         skf = StratifiedKFold(n_splits=self.n_splits, random_state=0, shuffle=True)
                 
+        i=0
         for train_index, test_index in skf.split(X, Y):  
-            self.clfs.fit(X[train_index], Y[train_index])   
+            self.clfs[i].fit(X[train_index], Y[train_index])
+            i+=1
             
         return
     
@@ -327,7 +329,7 @@ class cross_clf:
             prediction.
 
         """
-        out = self.clf[0].predict(x)
+        out = self.clfs[0].predict(x)
         for i in range(1,self.n_splits):
             out+=self.clfs[i].predict(x)
         return out/self.n_splits
