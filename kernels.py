@@ -11,6 +11,8 @@ Created on Mon Feb 15 16:03:06 2021
 import numpy as np
 import pandas as pd
 from numba import jit 
+from itertools import product, combinations
+from scipy.special import comb
 import scipy.sparse as sparse
 
 #%% spectrum kernel
@@ -129,36 +131,62 @@ class spectrum_kernel:
 
 #%% mismatch kernel
 
-#@jit(nopython=True)
-def phi_mismatch_kernel(X,k=10,m=2): ## TO DO
-    """
-    Parameters
-    ----------
-    X : string
-        ATCG string
-    k : int, optional
-        length of consecutive features considered. The default is 5.
-    m : int, optional
-        number of mismatch allowed. The default is 2.
-    Returns
-    -------
-    out : array of int
-          mismatch kernel value 
-
-    """
-    values = {'A':0,'T':1,'C':2,'G':3}
-    
-    out = np.zeros(4**k).astype(np.int16)
-    
-    for i in range(len(X)-k+1):
-        u = X[i:i+k]
-        ind = values[u[0]]
-        for j in range(1,k):
-            ind += values[u[j]]*4**j            
-                
-        out[ind]+=1
+class mismatch_kernel:
+    def __init__(self, k=10, m=1):
+        self.k = k
+        self.m = m
+        self.values = {'A':0,'T':1,'C':2,'G':3}
+        self.tab = 4 ** np.arange(k)
         
-    return out
+        self.mis = np.zeros((int(comb(k, m)) * 4 ** m, k))
+        shift = np.array(list(product([0,1,2,3], repeat=m)))
+        for i, idx in enumerate(combinations(range(k), m)):
+            self.mis[i*4**m:(i+1)*4**m, idx] = shift
+        # self.mis = np.unique(self.mis, axis=0)
+        
+    def phi(self, X):
+        """
+        Parameters
+        ----------
+        X : string
+            ATCG string
+        k : int, optional
+            length of consecutive features considered. The default is 5.
+        m : int, optional
+            number of mismatch allowed. The default is 2.
+        Returns
+        -------
+        out : array of int
+            mismatch kernel value
+        """
+        if type(X) == str:
+            out = sparse.lil_matrix((1, 4**self.k), dtype=np.int32)
+            X = list(map(lambda x: self.values[x], list(X))) + [0] * (self.k-len(X)%self.k)
+            for i in range(len(X)-self.k+1):
+                u = X[i:i+self.k]
+                ind = ((u + self.mis) % 4) * self.tab
+                ind = ind.sum(1)
+                for j in ind:
+                    out[0, j] += 1
+                    
+        else:
+            out = sparse.lil_matrix((len(X), 4**self.k), dtype=np.int32)
+            for l in range(len(X)):
+                print(l)
+                XX = list(map(lambda x: self.values[x], list(X[l]))) + [0] * (self.k-len(X[l])%self.k)
+                for i in range(len(X[l])-self.k+1):
+                    u = XX[i:i+self.k]
+                    ind = ((u + self.mis) % 4) * self.tab
+                    ind = ind.sum(1)
+                    for j in ind:
+                        out[l, j] += 1
+                        
+        return out.tocsc()
+        
+    def __call__(self,X1,X2):
+        phi1 = self.phi(X1)
+        phi2 = self.phi(X2)
+        return phi1.dot(phi2.T)
 
 #%% substring kernel
 
