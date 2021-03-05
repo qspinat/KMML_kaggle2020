@@ -137,10 +137,10 @@ class mismatch_kernel:
         self.k = k
         self.m = m
         self.values = {'A':0,'T':1,'C':2,'G':3}
-        self.tab = 4 ** np.arange(k)
+        self.tab = 4 ** np.arange(k,dtype=np.int)
         
-        self.mis = np.zeros((int(comb(k, m)) * 4 ** m, k))
-        shift = np.array(list(product([0,1,2,3], repeat=m)))
+        self.mis = np.zeros((int(comb(k, m)) * 4 ** m, k),dtype=np.int)
+        shift = np.array(list(product([0,1,2,3], repeat=m)),dtype=np.int)
         for i, idx in enumerate(combinations(range(k), m)):
             self.mis[i*4**m:(i+1)*4**m, idx] = shift
         # self.mis = np.unique(self.mis, axis=0)
@@ -177,7 +177,7 @@ class mismatch_kernel:
                 for i in range(len(X[l])-self.k+1):
                     u = XX[i:i+self.k]
                     ind = ((u + self.mis) % 4) * self.tab
-                    ind = ind.sum(1)
+                    ind = ind.sum(1)#.astype(np.int)
                     for j in ind:
                         out[l, j] += 1
                         
