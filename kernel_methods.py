@@ -73,7 +73,7 @@ class KRR:
             #self.w = np.array(phi.T.dot(np.linalg.inv(phi.dot(phi.T)+self.C*np.eye(Y.shape[0])).dot(Y).T)).squeeze()
         else:
             #self.w = sparse.linalg.inv(phi.T.dot(phi)+self.C*sparse.eye(phi.shape[0],dtype=np.int32)).dot(phi.T).dot(Y)
-            self.w = np.array(np.linalg.inv(phi.T.dot(phi)+self.C*np.eye(phi.shape[0],dtype=np.int32)).dot(phi.T).dot(Y)).squeeze()
+            self.w = np.array(np.linalg.inv(phi.T.dot(phi)+self.C*np.eye(phi.shape[0],dtype=np.int)).dot(phi.T).dot(Y)).squeeze()
         return
     
     def predict(self,x):

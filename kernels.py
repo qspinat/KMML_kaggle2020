@@ -83,8 +83,8 @@ class spectrum_kernel:
         if type(X)==str:
         
             #out = np.zeros(4**self.k).astype(np.int32)
-            #out = sparse.csr_matrix((1,4**self.k),dtype=np.int32)
-            out = sparse.lil_matrix((1,4**self.k),dtype=np.int32)
+            #out = sparse.csr_matrix((1,4**self.k),dtype=np.int)
+            out = sparse.lil_matrix((1,4**self.k),dtype=np.int)
             
             
             for i in range(len(X)-self.k+1):
@@ -95,9 +95,9 @@ class spectrum_kernel:
                 out[ind]+=1
                 
         else:
-            #out = np.zeros((len(X),4**self.k)).astype(np.int32)
-            #out = sparse.csr_matrix((len(X),4**self.k),dtype=np.int32)
-            out = sparse.lil_matrix((len(X),4**self.k),dtype=np.int32)
+            #out = np.zeros((len(X),4**self.k)).astype(np.int)
+            #out = sparse.csr_matrix((len(X),4**self.k),dtype=np.int)
+            out = sparse.lil_matrix((len(X),4**self.k),dtype=np.int)
             for l in tqdm(range(len(X))):
                 for i in range(len(X[0])-self.k+1):
                     u = X[l][i:i+self.k]
@@ -161,7 +161,7 @@ class mismatch_kernel:
             mismatch kernel value
         """
         if type(X) == str:
-            out = sparse.lil_matrix((1, 4**self.k), dtype=np.int32)
+            out = sparse.lil_matrix((1, 4**self.k), dtype=np.int)
             X = list(map(lambda x: self.values[x], list(X))) + [0] * (self.k-len(X)%self.k)
             for i in range(len(X)-self.k+1):
                 u = X[i:i+self.k]
@@ -171,7 +171,7 @@ class mismatch_kernel:
                     out[0, j] += 1
                     
         else:
-            out = sparse.lil_matrix((len(X), 4**self.k), dtype=np.int32)
+            out = sparse.lil_matrix((len(X), 4**self.k), dtype=np.int)
             for l in tqdm(range(len(X))):
                 XX = list(map(lambda x: self.values[x], list(X[l]))) + [0] * (self.k-len(X[l])%self.k)
                 for i in range(len(X[l])-self.k+1):
@@ -187,6 +187,39 @@ class mismatch_kernel:
         phi1 = self.phi(X1)
         phi2 = self.phi(X2)
         return phi1.dot(phi2.T)
+
+#%% Concatenation
+
+class concat_kernel:
+    def __init__(self,kernels=[spectrum_kernel(k=5),spectrum_kernel(k=10)]):
+        self.kernels=kernels
+        
+    def phi(self,X):
+        """
+        Parameters
+        ----------
+        X : string
+            ATCG string
+        k : int, optional
+            length of consecutive features considered. The default is 5.
+    
+        Returns
+        -------
+        out : array of int
+              spectrum kernel value  
+        """
+        out=self.kernels[0].phi(X)
+        
+        for i in range(1,len(self.kernels)):
+            out = sparse.hstack([out,self.kernels[i].phi(X)])
+        
+        return out
+    
+    def __call__(self,X1,X2):
+        phi1 = self.phi(X1)
+        phi2 = self.phi(X2)
+        return phi1.dot(phi2.T)
+
 
 #%% substring kernel
 
