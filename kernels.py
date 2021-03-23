@@ -57,13 +57,71 @@ from tqdm import tqdm
 #             out[l,ind]+=1         
 #     return out
 
-
+@jit
+def _update(X: str, k: int, values: dict[str,int]) -> tuple[np.ndarray, np.ndarray]:
+    col_ind = np.zeros(len(X)-k+1)
+    
+    for i in range(len(X)-k+1):
+        u = X[i:i+k]
+        idx = values[u[0]]
+        for j in range(1,k):
+            idx += values[u[j]] * 4**j
+            
+        col_ind[i] = idx
+    
+    col_ind, data = np.unique(col_ind, return_counts=True)  #fixme: return_counts not implemented
+    
+    return data, col_ind
 
 class spectrum_kernel:
     def __init__(self,k=5):
-        self.k=k
+        self.k = k
+        self.values = {'A':0,'T':1,'C':2,'G':3}
         
     #@jit(nopython=True)
+    # def phi(self,X):
+    #     """
+    #     Parameters
+    #     ----------
+    #     X : string
+    #         ATCG string
+    #     k : int, optional
+    #         length of consecutive features considered. The default is 5.
+    # 
+    #     Returns
+    #     -------
+    #     out : array of int
+    #           spectrum kernel value  
+    #     """
+    #     values = {'A':0,'T':1,'C':2,'G':3}
+    #     
+    #     if type(X)==str:
+    #     
+    #         #out = np.zeros(4**self.k).astype(np.int32)
+    #         #out = sparse.csr_matrix((1,4**self.k),dtype=np.int32)
+    #         out = sparse.lil_matrix((1,4**self.k),dtype=np.int32)
+    #         
+    #         
+    #         for i in range(len(X)-self.k+1):
+    #             u = X[i:i+self.k]
+    #             ind = values[u[0]]
+    #             for j in range(1,self.k):
+    #                 ind += values[u[j]]*4**j
+    #             out[ind]+=1
+    #             
+    #     else:
+    #         #out = np.zeros((len(X),4**self.k)).astype(np.int32)
+    #         #out = sparse.csr_matrix((len(X),4**self.k),dtype=np.int32)
+    #         out = sparse.lil_matrix((len(X),4**self.k),dtype=np.int32)
+    #         for l in tqdm(range(len(X))):
+    #             for i in range(len(X[0])-self.k+1):
+    #                 u = X[l][i:i+self.k]
+    #                 ind = values[u[0]]
+    #                 for j in range(1,self.k):
+    #                     ind += values[u[j]]*4**j
+    #                 out[l,ind]+=1         
+    #     return sparse.csc_matrix(out)
+            
     def phi(self,X):
         """
         Parameters
@@ -78,34 +136,18 @@ class spectrum_kernel:
         out : array of int
               spectrum kernel value  
         """
-        values = {'A':0,'T':1,'C':2,'G':3}
-        
         if type(X)==str:
-        
-            #out = np.zeros(4**self.k).astype(np.int32)
-            #out = sparse.csr_matrix((1,4**self.k),dtype=np.int)
-            out = sparse.lil_matrix((1,4**self.k),dtype=np.int)
-            
-            
-            for i in range(len(X)-self.k+1):
-                u = X[i:i+self.k]
-                ind = values[u[0]]
-                for j in range(1,self.k):
-                    ind += values[u[j]]*4**j
-                out[ind]+=1
+            data, col_ind = _update(X, self.k, self.values)
+            return sparse.csc_matrix((data, (np.zeros(len(col_ind)), col_ind)), shape=(1, 4**self.k))
                 
         else:
-            #out = np.zeros((len(X),4**self.k)).astype(np.int)
-            #out = sparse.csr_matrix((len(X),4**self.k),dtype=np.int)
-            out = sparse.lil_matrix((len(X),4**self.k),dtype=np.int)
-            for l in tqdm(range(len(X))):
-                for i in range(len(X[0])-self.k+1):
-                    u = X[l][i:i+self.k]
-                    ind = values[u[0]]
-                    for j in range(1,self.k):
-                        ind += values[u[j]]*4**j
-                    out[l,ind]+=1         
-        return sparse.csc_matrix(out)
+            data_all, col_ind_all, row_ind_all = np.array([]), np.array([]), np.array([])
+            for l in range(len(X)):
+                data, col_ind = _update(X[l], self.k, self.values)
+                data_all = np.append(data_all, data)
+                col_ind_all = np.append(col_ind_all, col_ind)
+                row_ind_all = np.append(row_ind_all, np.full(len(data), l))
+            return sparse.csc_matrix((data_all, (row_ind_all, col_ind_all)), shape=(len(X), 4**self.k))
 
     #@jit(nopython=True)
     def __call__(self,X1,X2):
