@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from kernels import spectrum_kernel, mismatch_kernel, concat_kernel
 from kernel_methods import KRR, KLR, SVM, cross_clf
+from data_augmentation import data_augmentation
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
@@ -19,6 +20,8 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 X = pd.concat((pd.read_csv("Data/Xtr0.csv"),pd.read_csv("Data/Xtr1.csv"),pd.read_csv("Data/Xtr2.csv")))['seq'].values
 Y = pd.concat((pd.read_csv("Data/Ytr0.csv"),pd.read_csv("Data/Ytr1.csv"),pd.read_csv("Data/Ytr2.csv")))['Bound'].values
 Y = 2*Y-1
+
+X, Y = data_augmentation(X, Y)
 
 X_train, X_test, Y_train, Y_test = train_test_split( X, Y, test_size=1/6, random_state=42, stratify=Y)
 
