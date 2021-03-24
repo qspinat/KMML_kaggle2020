@@ -191,8 +191,9 @@ class mismatch_kernel:
 #%% Concatenation
 
 class concat_kernel:
-    def __init__(self,kernels=[spectrum_kernel(k=5),spectrum_kernel(k=10)]):
+    def __init__(self,kernels=[spectrum_kernel(k=5),spectrum_kernel(k=10)],weights=[1,1]):
         self.kernels=kernels
+        self.weights=weights
         
     def phi(self,X):
         """
@@ -208,10 +209,10 @@ class concat_kernel:
         out : array of int
               spectrum kernel value  
         """
-        out=self.kernels[0].phi(X)
+        out=self.kernels[0].phi(X)*self.weights[0]
         
         for i in range(1,len(self.kernels)):
-            out = sparse.hstack([out,self.kernels[i].phi(X)])
+            out = sparse.hstack([out,self.kernels[i].phi(X)*self.weights[i]])
         
         return out
     

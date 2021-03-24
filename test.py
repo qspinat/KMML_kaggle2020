@@ -38,8 +38,9 @@ krr.fit(X_train,Y_train)
 #%% Kernel Ridge Regression
 
 kernels=[spectrum_kernel(6),spectrum_kernel(9)]
+weights=[1,1]
 
-krr = KRR(C=1000,kernel=concat_kernel(kernels))
+krr = KRR(C=1000,kernel=concat_kernel(kernels,weights))
 krr.fit(X_train,Y_train)
 
 
@@ -73,9 +74,10 @@ svm.fit(X_train,Y_train)
 
 #%% SVM
 
-kernels=[spectrum_kernel(6),spectrum_kernel(9)]
+kernels=[spectrum_kernel(5),spectrum_kernel(9)]
+weights=[1,1]
 
-svm = SVM(C=0.001,kernel=concat_kernel(kernels))
+svm = SVM(C=0.005,kernel=concat_kernel(kernels,weights))
 svm.fit(X_train,Y_train)
 
 #%% predict training set SVM
