@@ -26,10 +26,10 @@ y = 2*y-1
 
 #%%
 
-liste_C = [0.0001,0.001,0.01,0.1,1,10,100]
+liste_C = [100,125,150,175,200]#[0.005,0.006,0.007,0.008,0.009,0.01]
 scores = [f1_score, accuracy_score]
 
-clf = SVM
+clf = KRR
 
 n_splits=3
 skf = StratifiedKFold(n_splits=n_splits, random_state=0, shuffle=True)
@@ -44,6 +44,7 @@ for score in scores:
         val_score = 0
         for train_index, test_index in skf.split(X, y):  
             
+            #clf_ = cross_clf(C=C,kernel=spectrum_kernel(k=10),clf=clf,n_splits=4)
             clf_ = clf(C=C,kernel=spectrum_kernel(k=10))
             clf_.fit(X[train_index], y[train_index])
             

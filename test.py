@@ -72,7 +72,7 @@ svm.fit(X_train,Y_train)
 
 #%% SVM
 
-svm = SVM(C=0.001,kernel=mismatch_kernel(k=9,m=1))
+svm = SVM(C=0.00005,kernel=mismatch_kernel(k=9,m=1))
 svm.fit(X_train,Y_train)
 
 #%% SVM
@@ -147,7 +147,7 @@ print("accuracy :", accuracy_score(Y_test,y_pred))
 
 #%% train on the whole dataset
 
-clf = KRR(C=50000,kernel=mismatch_kernel(k=9,m=1))
+clf = SVM(C=0.00005,kernel=mismatch_kernel(k=9,m=1))
 clf.fit(X,Y)
 
 #%% test data
